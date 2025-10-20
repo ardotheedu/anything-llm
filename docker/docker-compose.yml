@@ -1,12 +1,20 @@
 name: anythingllm
 
 networks:
-  anything-llm:
+  traefik_proxy:
     driver: bridge
 
 services:
   anything-llm:
     container_name: anythingllm
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.llm.rule=Host(`llm.uivale.com`)
+      - traefik.http.routers.llm.entrypoints=websecure
+      - traefik.http.routers.llm.tls=true
+      - traefik.http.routers.llm.tls.certresolver=mytlschallenge
+      - traefik.http.services.llm.loadbalancer.server.port=3001
+      - traefik.docker.network=traefik_proxy
     build:
       context: ../.
       dockerfile: ./docker/Dockerfile
@@ -20,12 +28,14 @@ services:
       - "../server/storage:/app/server/storage"
       - "../collector/hotdir/:/app/collector/hotdir"
       - "../collector/outputs/:/app/collector/outputs"
+      - "../frontend/public/embed/:/app/frontend/public/embed"
     user: "${UID:-1000}:${GID:-1000}"
     ports:
       - "3001:3001"
     env_file:
       - .env
     networks:
-      - anything-llm
+      - traefik_proxy
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    restart: unless-stopped
