@@ -2,7 +2,7 @@ name: anythingllm
 
 networks:
   traefik_proxy:
-    driver: bridge
+    external: true
 
 services:
   anything-llm:
@@ -15,6 +15,7 @@ services:
       - traefik.http.routers.llm.tls.certresolver=mytlschallenge
       - traefik.http.services.llm.loadbalancer.server.port=3001
       - traefik.docker.network=traefik_proxy
+
     build:
       context: ../.
       dockerfile: ./docker/Dockerfile
