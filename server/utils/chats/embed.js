@@ -172,6 +172,22 @@ async function streamChatWithForEmbed(
       });
     completeText = textResponse;
     metrics = performanceMetrics;
+
+    // Save chat first to get the chatId
+    const { chat } = await EmbedChats.new({
+      embedId: embed.id,
+      prompt: message,
+      response: { text: completeText, type: chatMode, sources, metrics },
+      connection_information: response.locals.connection
+        ? {
+            ...response.locals.connection,
+            username: !!username ? String(username) : null,
+          }
+        : { username: !!username ? String(username) : null },
+      sessionId,
+    });
+
+    // Send response with chatId
     writeResponseChunk(response, {
       uuid,
       sources: [],
@@ -179,7 +195,9 @@ async function streamChatWithForEmbed(
       textResponse: completeText,
       close: true,
       error: false,
+      chatId: chat?.id || null,
     });
+    return;
   } else {
     const stream = await LLMConnector.streamGetChatCompletion(messages, {
       temperature: embed.workspace?.openAiTemp ?? LLMConnector.defaultTemp,
@@ -191,7 +209,7 @@ async function streamChatWithForEmbed(
     metrics = stream.metrics;
   }
 
-  await EmbedChats.new({
+  const { chat } = await EmbedChats.new({
     embedId: embed.id,
     prompt: message,
     response: { text: completeText, type: chatMode, sources, metrics },
@@ -203,6 +221,19 @@ async function streamChatWithForEmbed(
       : { username: !!username ? String(username) : null },
     sessionId,
   });
+
+  // Send final chunk with chatId and feedbackScore so frontend can display feedback buttons immediately
+  writeResponseChunk(response, {
+    uuid,
+    type: "textResponseChunk",
+    textResponse: "",
+    sources: [],
+    close: true,
+    error: false,
+    chatId: chat?.id || null,
+    feedbackScore: null, // Initial feedback is null
+  });
+
   return;
 }
 
